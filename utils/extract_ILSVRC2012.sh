@@ -24,10 +24,11 @@ fi
 cd $workdir
 
 # check if train dataset exist
-if [ ! -f "darknet_19_224_imagenet.ym" ]
+if [ ! -f "ILSVRC2012_img_train.tar" ]
 then
     echo "Training dataset: tar file was not found"
     echo "Skipping extraction of the train set"
+    echo " "
 else
     
     # check if the train was already extracted
@@ -35,21 +36,23 @@ else
     then
         echo "Train folder already exist"
         echo "Skipping extraction of the train set"
+        echo " "
     else
         echo "Extracting train dataset ..."
-        #mkdir train && mv ILSVRC2012_img_train.tar train/ && cd train
-        #tar -xvf ILSVRC2012_img_train.tar
-        #mv ILSVRC2012_img_train.tar ../
-        #find . -name "*.tar" | while read NAME ; do mkdir -p "${NAME%.tar}"; tar -xvf "${NAME}" -C "${NAME%.tar}"; rm -f "${NAME}"; done
-
+        mkdir train && mv ILSVRC2012_img_train.tar train/ && cd train
+        tar -xvf ILSVRC2012_img_train.tar
+        mv ILSVRC2012_img_train.tar ../
+        find . -name "*.tar" | while read NAME ; do mkdir -p "${NAME%.tar}"; tar -xvf "${NAME}" -C "${NAME%.tar}"; rm -f "${NAME}"; done
+        echo " "
     fi
 fi
 
 # check if validation dataset exist
-if [ ! -f "darknet_19_224_imagenet.ym" ]
+if [ ! -f "ILSVRC2012_img_val.tar" ]
 then
     echo "Validation dataset: tar file was not found"
     echo "Skipping extraction of the train set"
+    echo " "
 else
 
     # check if the validation was already extracted
@@ -57,10 +60,12 @@ else
     then
         echo "Validation folder already exist"
         echo "Skipping extraction of the validation set"
+        echo " "
     else
         echo "Extracting validation dataset ..."
         #mkdir val && mv ILSVRC2012_img_val.tar val/ && cd val && tar -xvf ILSVRC2012_img_val.tar
         #wget -qO- https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh | bash
+        echo " "
     fi
 fi
 

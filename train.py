@@ -1,6 +1,7 @@
 import torch
 from torchsummary import summary
 from models import MobileNet, Darknet
+import torchvision
 
 import argparse
 import os
@@ -38,6 +39,7 @@ if __name__ == '__main__':
     config_momentum =       config['TRAIN']['OPTIMIZER']['MOMENTUM']
     config_weight_decay =   config['TRAIN']['OPTIMIZER']['WEIGHT_DECAY']
 
+    config_workers =        config['TRAIN']['WORKERS']
     config_max_epochs =     config['TRAIN']['MAX_EPOCHS']
     config_batch_size =     config['TRAIN']['BATCH_SIZE']
 
@@ -116,13 +118,24 @@ if __name__ == '__main__':
     # TODO: converter para grayscale as images do dataset da pista, pra ver se 
     # aquele efeito louco desaparece
 
-    # TODO: load dataset
-    #train_dataset = 
-    #test_dataset = 
-    #train_loader = 
-    #test_loader = 
+    # Dataloaders
+    train_dataset = torchvision.datasets.ImageFolder(root=config_dataset_path,
+                                                     transform=None)
 
-    # TODO: dataloaders
+    test_dataset = None
+    
+    train_loader = torch.utils.data.DataLoader(train_dataset,
+                                               batch_size=16,
+                                               shuffle=True,
+                                               num_workers=config_workers,
+                                               pin_memory=True)
+
+    test_loader = None
+    
+    
+
+
+
     '''
     
 
