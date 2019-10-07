@@ -9,6 +9,7 @@ TRAIN:
   MAX_EPOCHS: 200
   BATCH_SIZE: 32
   WORKERS: 4
+  PRINT_FREQ: 2000
   OPTIMIZER:
     OPTIMIZER: 'SGD'
     LEARNING_RATE: 0.001
@@ -22,7 +23,7 @@ TEST:
   BATCH_SIZE: 48
 
 DATASET:
-  DATASET_DIR: './data/COCO'
+  TRAIN: '/home/nesvera/Documents/neural_nets/classification/classifiers/dataset/GTSRB/train'
   SPLIT: 0.6
 
 EXP_DIR: './experiments/models/fssd_mobilenet_v1_coco'

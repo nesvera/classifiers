@@ -1,22 +1,27 @@
 import torch
+import torch.nn as nn
 from torchsummary import summary
 from models import MobileNet, Darknet
 import torchvision
+import torchvision.transforms as T
+from utils.utils import Average
 
 import argparse
 import os
 import numpy as np
 import yaml
+import cv2
+import time
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-if __name__ == '__main__':
+def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--config',
                         dest='config_path',
                         required=True,
-                        help='configuration file with train hyperparamenters')
+                        help='Configuration file with train hyperparamenters')
 
     args = parser.parse_args()
 
@@ -42,8 +47,9 @@ if __name__ == '__main__':
     config_workers =        config['TRAIN']['WORKERS']
     config_max_epochs =     config['TRAIN']['MAX_EPOCHS']
     config_batch_size =     config['TRAIN']['BATCH_SIZE']
+    config_print_freq =     config['TRAIN']['PRINT_FREQ']
 
-    config_dataset_path =   config['DATASET']['DATASET_DIR']
+    config_train_dataset =  config['DATASET']['TRAIN']
     config_split =          config['DATASET']['SPLIT']
 
     # Set the seed for reproducibility
@@ -104,7 +110,13 @@ if __name__ == '__main__':
                                          lr=config_lr,
                                          weight_decay=config_weight_decay)            
 
+
+        start_epoch = 1
+
+        criterion = nn.CrossEntropyLoss()
     else:
+
+        start_epoch = 1 + 1
         pass
 
     # summarize the model
@@ -118,38 +130,113 @@ if __name__ == '__main__':
     # TODO: converter para grayscale as images do dataset da pista, pra ver se 
     # aquele efeito louco desaparece
 
+    val_transform = T.Compose([
+        T.Resize(224),          # resize the smaller edge of the image, keeping ratio
+        T.CenterCrop(224),      # crop the image to the correct size
+        T.ToTensor()
+    ])
+
     # Dataloaders
-    train_dataset = torchvision.datasets.ImageFolder(root=config_dataset_path,
-                                                     transform=None)
+    # "list" of train data
+    train_dataset = torchvision.datasets.ImageFolder(root=config_train_dataset,
+                                                     transform=val_transform)
 
     test_dataset = None
     
+    # "list" of batches
     train_loader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_size=16,
+                                               batch_size=2,
                                                shuffle=True,
                                                num_workers=config_workers,
                                                pin_memory=True)
 
     test_loader = None
+
+    for epoch in range(start_epoch, config_max_epochs):
+
+        train(model=model,
+              loader=train_loader,
+              criterion=criterion,
+              optimizer=optimizer,
+              epoch=epoch,
+              print_freq=config_print_freq)
+
+        val_loss = validation(model=model,
+                              loader=None,
+                              criterion=criterion,
+                              optimizer=optimizer,
+                              epoch=epoch,
+                              print_freq=config_print_freq)
+
+
+def train(model, loader, criterion, optimizer, epoch, print_freq):
     
-    
+    model.train() # training mode, enables dropout
 
+    fetch_time = Average()      # data loading
+    train_time = Average()      # forward prop. + backprop.
 
+    loss_avg = Average()        # loss average
 
-    '''
-    
+    batch_start = time.time()
 
-    model = model.MobilenetV1Conv224(alpha=1.0)
-    model = model.to(device)
+    # loop through dataset, batch by batch
+    for i, (images, labels) in enumerate(loader):
+        
+        fetch_time.add_value(time.time()-batch_start)
 
-    # Repeat N epochs
-    for epoch in range(epoch, config_max_epochs):
-    '''
+        images = images.to(device)          # (batch_size, 3, width, height)
+        labels = labels.to(device)
 
-    # TODO: train
+        # Forward prop.
+        prediction_prob = model(images)     # (batch_size, n_classes)
 
-    # TODO: test
+        # Calculate loss
+        loss = criterion(prediction_prob, labels)
 
-    # TODO: track of improvement
+        # Backprop
+        optimizer.zero_grad()
+        loss.backward()
 
-    # TODO: save_checkpoint
+        # Clip gradient? estudar
+        print(loss.item())
+
+        # Update model
+        optimizer.step()
+
+        train_time.add_value(time.time()-batch_start)       # measure train time
+        batch_start = time.time()
+
+        # print statistics
+        if i % print_freq == 0:
+            pass
+
+        input()
+
+    # time measurments
+
+def validation(model, loader, criterion, optimizer, epoch, print_freq):
+
+    model.eval()        # evaluation mode, disables dropout
+
+    val_time = Average()
+
+    batch_start = time.time()
+
+    for i, (images, labels) in enumerate(loader):
+        
+        images = images.to(device)          # (batch_size, 3, width, height)
+        labels = labels.to(device)
+
+        prediction_prob = model(images)     # (batch_size, n_classes)
+
+        eval_loss = criterion(prediction_prob, labels)
+
+        val_time.add_value(time.time()-batch_start)
+        batch_start = time.time()
+
+        if i % print_freq == 0:
+            pass
+
+if __name__ == '__main__':
+    main()
