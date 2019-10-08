@@ -24,8 +24,8 @@ TEST:
 
 DATASET:
   TRAIN: '/home/nesvera/Documents/neural_nets/classification/classifiers/dataset/GTSRB/train'
-  SPLIT: 0.6
+  VALID: ''
 
-EXP_DIR: './experiments/models/fssd_mobilenet_v1_coco'
-LOG_DIR: './experiments/models/fssd_mobilenet_v1_coco'
+EXP_DIR: './experiments/'
+LOG_DIR: './experiments/'
 RESUME_CHECKPOINT: ''
