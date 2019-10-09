@@ -50,7 +50,9 @@ def main():
     config_print_freq =     config['TRAIN']['PRINT_FREQ']
 
     config_train_dataset =  config['DATASET']['TRAIN']
-    config_split =          config['DATASET']['SPLIT']
+    config_val_dataset =    config['DATASET']['VALID']
+
+    config_experiment_path =config['EXP_DIR']
 
     # Set the seed for reproducibility
     if config['TRAIN']['REPRODUCIBILITY']['REPRODUCIBILITY'] == True:
@@ -102,8 +104,7 @@ def main():
         if config_optimizer == 'SGD':
             optimizer = torch.optim.SGD(model.parameters(),
                                         lr=config_lr,
-                                        momentum=config_momentum,
-                                        weight_decay=config_weight_decay)
+                                        momentum=config_momentum)
 
         elif config_optimizer == 'ADAM':
             optimizer = torch.optim.Adam(model.parameters(),
@@ -119,6 +120,8 @@ def main():
         start_epoch = 1 + 1
         pass
 
+    model = model.to(device)
+
     # summarize the model
     print()
     print("----------------------------------------------------------------")
@@ -130,28 +133,37 @@ def main():
     # TODO: converter para grayscale as images do dataset da pista, pra ver se 
     # aquele efeito louco desaparece
 
-    val_transform = T.Compose([
-        T.Resize(224),          # resize the smaller edge of the image, keeping ratio
-        T.CenterCrop(224),      # crop the image to the correct size
-        T.ToTensor()
+    transform = T.Compose([
+        T.Resize(config_input_size[0]),          # resize the smaller edge of the image, keeping ratio
+        T.CenterCrop(config_input_size[0]),      # crop the image to the correct size        
+        T.ToTensor(),
+        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
     # Dataloaders
     # "list" of train data
     train_dataset = torchvision.datasets.ImageFolder(root=config_train_dataset,
-                                                     transform=val_transform)
+                                                     transform=transform)
 
-    test_dataset = None
+    test_dataset = torchvision.datasets.ImageFolder(root=config_val_dataset,
+                                                    transform=transform)
     
     # "list" of batches
     train_loader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_size=2,
+                                               batch_size=config_batch_size,
                                                shuffle=True,
                                                num_workers=config_workers,
-                                               pin_memory=True)
+                                               pin_memory=False)
 
-    test_loader = None
+    validation_loader = torch.utils.data.DataLoader(test_dataset,
+                                                    batch_size=config_batch_size,
+                                                    shuffle=False,
+                                                    num_workers=config_workers,
+                                                    pin_memory=True)
 
+    # 1 epoch:
+    #   - train over all images of the dataset
+    #   - validate over all images of the validation set
     for epoch in range(start_epoch, config_max_epochs):
 
         train(model=model,
@@ -162,31 +174,39 @@ def main():
               print_freq=config_print_freq)
 
         val_loss = validation(model=model,
-                              loader=None,
+                              loader=validation_loader,
                               criterion=criterion,
                               optimizer=optimizer,
                               epoch=epoch,
                               print_freq=config_print_freq)
 
+        save(config_model_name, config_experiment_path, epoch, model, optimizer, val_loss, 0)
 
 def train(model, loader, criterion, optimizer, epoch, print_freq):
     
     model.train() # training mode, enables dropout
 
-    fetch_time = Average()      # data loading
-    train_time = Average()      # forward prop. + backprop.
+    epoch_fetch_time = Average()      # data loading
+    partial_fetch_time = Average()    
 
-    loss_avg = Average()        # loss average
+    epoch_train_time = Average()      # forward prop. + backprop.
+    partial_train_time = Average()      # forward prop. + backprop., reset for each batch
+
+    epoch_loss = Average()        # loss average
 
     batch_start = time.time()
 
     # loop through dataset, batch by batch
     for i, (images, labels) in enumerate(loader):
         
-        fetch_time.add_value(time.time()-batch_start)
+        epoch_fetch_time.add_value(time.time()-batch_start)
+        partial_fetch_time.add_value(time.time()-batch_start)
 
         images = images.to(device)          # (batch_size, 3, width, height)
         labels = labels.to(device)
+
+        # zero the parameter gradients
+        optimizer.zero_grad()
 
         # Forward prop.
         prediction_prob = model(images)     # (batch_size, n_classes)
@@ -195,35 +215,51 @@ def train(model, loader, criterion, optimizer, epoch, print_freq):
         loss = criterion(prediction_prob, labels)
 
         # Backprop
-        optimizer.zero_grad()
         loss.backward()
 
         # Clip gradient? estudar
-        print(loss.item())
 
         # Update model
         optimizer.step()
 
-        train_time.add_value(time.time()-batch_start)       # measure train time
+        epoch_loss.add_value(loss.item())   
+
+        epoch_train_time.add_value(time.time()-batch_start)       # measure train time
+        partial_train_time.add_value(time.time()-batch_start)
+
         batch_start = time.time()
 
         # print statistics
         if i % print_freq == 0:
-            pass
+            print('Epoch: [{0}] - Batch: [{1}/{2}]'.format(epoch, i, len(loader)))
+            print('Partial fetch time: {0:.4f} - Epoch fetch time: {1:.4f} (seconds/batch)'
+                 .format(partial_fetch_time.get_average(), epoch_fetch_time.get_average()))
+            print('Partial train time: {0:.4f} - Epoch train time: {1:.4f} (seconds/batch)'
+                 .format(partial_train_time.get_average(), epoch_train_time.get_average()))  
+            print('Loss: {0:.5f} - Current loss: {1:.5f}'.format(epoch_loss.get_average(), loss.item()))
+            print()
 
-        input()
+            # Reset measurment for each
+            partial_fetch_time = Average()
+            partial_train_time = Average()
+
 
     # time measurments
+
+    return epoch_loss.get_average()
 
 def validation(model, loader, criterion, optimizer, epoch, print_freq):
 
     model.eval()        # evaluation mode, disables dropout
 
-    val_time = Average()
+    partial_eval_time = Average()
+    epoch_eval_time = Average()
+
+    epoch_loss = Average()        # loss average
 
     batch_start = time.time()
 
-    for i, (images, labels) in enumerate(loader):
+    for i, (images, labels) in enumerate(loader):    
         
         images = images.to(device)          # (batch_size, 3, width, height)
         labels = labels.to(device)
@@ -231,12 +267,42 @@ def validation(model, loader, criterion, optimizer, epoch, print_freq):
         prediction_prob = model(images)     # (batch_size, n_classes)
 
         eval_loss = criterion(prediction_prob, labels)
+        
+        epoch_loss.add_value(eval_loss.item())
 
-        val_time.add_value(time.time()-batch_start)
+        partial_eval_time.add_value(time.time()-batch_start)
+        epoch_eval_time.add_value(time.time()-batch_start)
         batch_start = time.time()
 
+        # print statistics
         if i % print_freq == 0:
-            pass
+            print('Validation - Epoch: [{0}] - Batch: [{1}/{2}]'.format(epoch, i, len(loader)))
+            print('Partial eval time: {0:.4f} - Epoch eval time: {1:.4f} (seconds/batch)'
+                 .format(partial_eval_time.get_average(), epoch_eval_time.get_average()))  
+            print('Loss: {0:.5f} - Current loss: {1:.5f}'.format(epoch_loss.get_average(), eval_loss.item()))
+
+            partial_eval_time = Average()
+
+    return epoch_loss.get_average()
+
+def save(model_name, path, epoch, model, optimizer, loss, is_best):
+
+    filename = path + "/" + model_name
+
+    if os.path.isdir(filename) == False:
+        os.mkdir(filename)
+        print("caiu")
+
+    state = {'epoch': epoch,
+             'loss': loss,
+             'model': model,
+             'optimizer': optimizer}
+
+    filename += '/' + model_name + '_' + str(epoch) + '.pth.tar'
+    torch.save(state, filename)
+
+    if is_best:
+        pass
 
 if __name__ == '__main__':
     main()

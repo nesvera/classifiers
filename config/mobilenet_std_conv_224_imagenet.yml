@@ -7,9 +7,9 @@ MODEL:
   
 TRAIN:
   MAX_EPOCHS: 200
-  BATCH_SIZE: 32
-  WORKERS: 4
-  PRINT_FREQ: 2000
+  BATCH_SIZE: 64
+  WORKERS: 2
+  PRINT_FREQ: 10
   OPTIMIZER:
     OPTIMIZER: 'SGD'
     LEARNING_RATE: 0.001
@@ -20,11 +20,11 @@ TRAIN:
     SEED: 0
 
 TEST:
-  BATCH_SIZE: 48
+  BATCH_SIZE: 64
 
 DATASET:
-  TRAIN: '/home/nesvera/Documents/neural_nets/classification/classifiers/dataset/GTSRB/train'
-  VALID: ''
+  TRAIN: '/home/feaf-seat-1/Documents/nesvera/datapool/dataset/train'
+  VALID: '/home/feaf-seat-1/Documents/nesvera/datapool/dataset/val'
 
 EXP_DIR: './experiments/'
 LOG_DIR: './experiments/'
