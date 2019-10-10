@@ -50,10 +50,10 @@ imagenet_val="${imagenet_path}/val"
 output_train="${output_path}/train"
 output_val="${output_path}/val"
 
-
+# go to the train directory inside imagenet and get all classes
 cd $imagenet_train
-cd ..
-find train/ -name "*.JPEG" | wc -l
+
+
 
 exit 1
 

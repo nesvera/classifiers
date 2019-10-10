@@ -213,9 +213,9 @@ class MobileNetV1Conv224(nn.Module):
 
         out = out.view(out.size(0), -1)             # [N, a*1024]
         out = self.dropout(out)                     # [N, a*1024]
-        out = self.fc(out)                          # [N, 1000]
+        out = self.fc(out)                          # [N, n_classes]
 
-        out = self.softmax(out)                     # [N, 1000]
+        out = self.softmax(out)                     # [N, n_classes]
 
         return out
 
@@ -389,9 +389,9 @@ class MobileNetV1Dw224(nn.Module):
 
         out = out.view(out.size(0), -1)             # [N, a*1024]
         out = self.dropout(out)                     # [N, a*1024]
-        out = self.fc(out)                          # [N, 1000]
+        out = self.fc(out)                          # [N, n_classes]
 
-        out = self.softmax(out)                     # [N, 1000]
+        out = self.softmax(out)                     # [N, n_classes]
 
         return out
 

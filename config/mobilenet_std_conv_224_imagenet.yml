@@ -2,30 +2,36 @@ MODEL:
   #NAME: mobilenet_standard_conv_224
   NAME: 'mobilenet_dw_224'
   IMAGE_SIZE: [224, 224, 3]
-  NUM_CLASSES: 1000
+  NUM_CLASSES: 30
   ALPHA: 1.0
   
 TRAIN:
-  MAX_EPOCHS: 200
+  MAX_EPOCHS: 800
   BATCH_SIZE: 64
   WORKERS: 2
   PRINT_FREQ: 10
   OPTIMIZER:
     OPTIMIZER: 'SGD'
-    LEARNING_RATE: 0.001
+    LEARNING_RATE: 0.008        # Initial learning rate, dont forget SGDR
     MOMENTUM: 0.9
     WEIGHT_DECAY: 0.0001
   REPRODUCIBILITY:
-    REPRODUCIBILITY: True
+    REPRODUCIBILITY: False
     SEED: 0
+  SGDR:
+    MIN_LR: 0.0001
+    MAX_LR: 0.008
+    LR_DECAY: 0.1               # e.g. 0.2 = decrease 20% the max_lr by cycle
+    CYCLE: 10                   # number of epochs for each cycle
+    CYCLE_MULT: 0.1             # e.g. 0.2 = increase 20% the cycle length 
 
 TEST:
-  BATCH_SIZE: 64
+  BATCH_SIZE: 32
 
 DATASET:
-  TRAIN: '/home/feaf-seat-1/Documents/nesvera/datapool/dataset/train'
-  VALID: '/home/feaf-seat-1/Documents/nesvera/datapool/dataset/val'
+  TRAIN: '/home/feaf-seat-1/Documents/nesvera/ssd_dataset/imagenet_30/train'
+  VALID: '/home/feaf-seat-1/Documents/nesvera/ssd_dataset/imagenet_30/val'
 
 EXP_DIR: './experiments/'
 LOG_DIR: './experiments/'
-RESUME_CHECKPOINT: ''
+RESUME_CHECKPOINT: 'BEST_mobilenet_dw_224.pth.tar'

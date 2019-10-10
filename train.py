@@ -4,7 +4,7 @@ from torchsummary import summary
 from models import MobileNet, Darknet
 import torchvision
 import torchvision.transforms as T
-from utils.utils import Average
+from utils.utils import Average, SGDR
 
 import argparse
 import os
@@ -44,6 +44,12 @@ def main():
     config_momentum =       config['TRAIN']['OPTIMIZER']['MOMENTUM']
     config_weight_decay =   config['TRAIN']['OPTIMIZER']['WEIGHT_DECAY']
 
+    config_sgdr_min_lr =    config['TRAIN']['SGDR']['MIN_LR']
+    config_sgdr_max_lr =    config['TRAIN']['SGDR']['MAX_LR']
+    config_sgdr_lr_decay =  config['TRAIN']['SGDR']['LR_DECAY']
+    config_sgdr_cycle =     config['TRAIN']['SGDR']['CYCLE']
+    config_sgdr_cycle_mult= config['TRAIN']['SGDR']['CYCLE_MULT']
+
     config_workers =        config['TRAIN']['WORKERS']
     config_max_epochs =     config['TRAIN']['MAX_EPOCHS']
     config_batch_size =     config['TRAIN']['BATCH_SIZE']
@@ -53,6 +59,17 @@ def main():
     config_val_dataset =    config['DATASET']['VALID']
 
     config_experiment_path =config['EXP_DIR']
+
+    config_checkpoint =     config['RESUME_CHECKPOINT']
+
+    checkpoint_path = config_experiment_path + "/" + config_model_name
+    checkpoint_path += "/" + config_checkpoint
+
+    if os.path.exists(checkpoint_path) == False:
+        config_checkpoint = ''
+        print("Warning: Best checkpoint was not found!")
+    else:
+        print("Warning: Loading best checkpoint!")
 
     # Set the seed for reproducibility
     if config['TRAIN']['REPRODUCIBILITY']['REPRODUCIBILITY'] == True:
@@ -66,7 +83,11 @@ def main():
         torch.backends.cudnn.benchmark = False
 
     # Initialize a new model or load checkpoint
-    if config['RESUME_CHECKPOINT'] == '':
+    if config_checkpoint == '':
+    
+        # Keep track of losses
+        train_loss_log = {}
+        val_loss_log = {}
 
         # MobileNet V1 (224x224x3) with standard convolutional layers
         if config_model_name == 'mobilenet_standard_conv_224':
@@ -111,16 +132,25 @@ def main():
                                          lr=config_lr,
                                          weight_decay=config_weight_decay)            
 
-
         start_epoch = 1
 
-        criterion = nn.CrossEntropyLoss()
     else:
+        
+        checkpoint_path = config_experiment_path + "/" + config_model_name
+        checkpoint_path += "/" + config_checkpoint
 
-        start_epoch = 1 + 1
-        pass
+        checkpoint = torch.load(checkpoint_path)
+        
+        start_epoch =   checkpoint['epoch'] + 1
+        model =         checkpoint['model']
+        optimizer =     checkpoint['optimizer']
+
+        # Keep track of losses
+        train_loss_log =checkpoint['train_loss_log']
+        val_loss_log =  checkpoint['val_loss_log']
 
     model = model.to(device)
+    criterion = nn.CrossEntropyLoss()
 
     # summarize the model
     print()
@@ -153,7 +183,7 @@ def main():
                                                batch_size=config_batch_size,
                                                shuffle=True,
                                                num_workers=config_workers,
-                                               pin_memory=False)
+                                               pin_memory=True)
 
     validation_loader = torch.utils.data.DataLoader(test_dataset,
                                                     batch_size=config_batch_size,
@@ -161,18 +191,39 @@ def main():
                                                     num_workers=config_workers,
                                                     pin_memory=True)
 
+    # Keep track for improvement
+    best_loss = 9000.
+    epochs_since_last_improvement = 0
+
+    # Keep track of learning rate
+    lr_schedule = SGDR(min_lr=config_sgdr_min_lr,
+                       max_lr=config_sgdr_max_lr,
+                       lr_decay=config_sgdr_lr_decay,
+                       epochs_per_cycle=config_sgdr_cycle,
+                       mult_factor=config_sgdr_cycle_mult)
+
+    #lr_schedule = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0, T_mult=1, eta_min=0, last_epoch=-1)
+
     # 1 epoch:
     #   - train over all images of the dataset
     #   - validate over all images of the validation set
     for epoch in range(start_epoch, config_max_epochs):
 
-        train(model=model,
-              loader=train_loader,
-              criterion=criterion,
-              optimizer=optimizer,
-              epoch=epoch,
-              print_freq=config_print_freq)
+        # ------------------------
+        #          Train
+        # ------------------------
+        train_loss = train(model=model,
+                           loader=train_loader,
+                           criterion=criterion,
+                           optimizer=optimizer,
+                           epoch=epoch,
+                           print_freq=config_print_freq)
 
+        train_loss_log[epoch] = train_loss
+
+        # ------------------------
+        #        Validation 
+        # ------------------------
         val_loss = validation(model=model,
                               loader=validation_loader,
                               criterion=criterion,
@@ -180,7 +231,57 @@ def main():
                               epoch=epoch,
                               print_freq=config_print_freq)
 
-        save(config_model_name, config_experiment_path, epoch, model, optimizer, val_loss, 0)
+        val_loss_log[epoch] = val_loss
+
+        # Check if the model improved
+        is_best = 0
+        epochs_since_last_improvement += 1
+
+        if val_loss < best_loss:
+            is_best = 1
+            best_loss = val_loss
+            epochs_since_last_improvement = 0
+            print("Melhorouuuuuuuuuuuuuuu\n")
+
+        print("Val loss: {0:.3f} - Best loss: {1:.3f} \n Epochs since last improvement: {2}\n"
+              .format(val_loss, best_loss, epochs_since_last_improvement))
+
+        # ------------------------
+        #        Save model 
+        # ------------------------
+        exp_folder = config_experiment_path + "/" + config_model_name
+
+        # Create a folder for a new topology/experiment
+        if os.path.isdir(exp_folder) == False:
+            os.mkdir(exp_folder)
+
+        state = {'epoch': epoch,
+                 'loss': val_loss,
+                 'train_loss_log': train_loss_log,
+                 'val_loss_log': val_loss_log,
+                 'model': model,
+                 'optimizer': optimizer}
+
+        exp_filename = exp_folder + '/' + config_model_name + '.pth.tar'
+        torch.save(state, exp_filename)
+
+        if is_best:
+            exp_filename = exp_folder + '/BEST_' + config_model_name + '.pth.tar'
+            torch.save(state, exp_filename)
+
+        if epoch == (config_max_epochs-1):
+            exp_filename = exp_folder + '/LAST_' + config_model_name + '.pth.tar'
+            torch.save(state, exp_filename)
+
+        # ------------------------
+        #  Learning rate schedule 
+        # ------------------------
+        lr = lr_schedule.update()
+
+        for opt in optimizer.param_groups:
+            opt['lr'] = lr
+
+        print('LR: {0:.3f}\n'.format(lr))
 
 def train(model, loader, criterion, optimizer, epoch, print_freq):
     
@@ -259,50 +360,33 @@ def validation(model, loader, criterion, optimizer, epoch, print_freq):
 
     batch_start = time.time()
 
-    for i, (images, labels) in enumerate(loader):    
-        
-        images = images.to(device)          # (batch_size, 3, width, height)
-        labels = labels.to(device)
+    # Prohibit gradient computation explicity because I had some problems with memory
+    with torch.no_grad():
+        for i, (images, labels) in enumerate(loader):    
+            
+            images = images.to(device)          # (batch_size, 3, width, height)
+            labels = labels.to(device)
 
-        prediction_prob = model(images)     # (batch_size, n_classes)
+            prediction_prob = model(images)     # (batch_size, n_classes)
 
-        eval_loss = criterion(prediction_prob, labels)
-        
-        epoch_loss.add_value(eval_loss.item())
+            eval_loss = criterion(prediction_prob, labels)
+            
+            epoch_loss.add_value(eval_loss.item())
 
-        partial_eval_time.add_value(time.time()-batch_start)
-        epoch_eval_time.add_value(time.time()-batch_start)
-        batch_start = time.time()
+            partial_eval_time.add_value(time.time()-batch_start)
+            epoch_eval_time.add_value(time.time()-batch_start)
+            batch_start = time.time()
 
-        # print statistics
-        if i % print_freq == 0:
-            print('Validation - Epoch: [{0}] - Batch: [{1}/{2}]'.format(epoch, i, len(loader)))
-            print('Partial eval time: {0:.4f} - Epoch eval time: {1:.4f} (seconds/batch)'
-                 .format(partial_eval_time.get_average(), epoch_eval_time.get_average()))  
-            print('Loss: {0:.5f} - Current loss: {1:.5f}'.format(epoch_loss.get_average(), eval_loss.item()))
+            # print statistics
+            if i % print_freq == 0:
+                print('Validation - Epoch: [{0}] - Batch: [{1}/{2}]'.format(epoch, i, len(loader)))
+                print('Partial eval time: {0:.4f} - Epoch eval time: {1:.4f} (seconds/batch)'
+                     .format(partial_eval_time.get_average(), epoch_eval_time.get_average()))  
+                print('Loss: {0:.5f} - Current loss: {1:.5f}'.format(epoch_loss.get_average(), eval_loss.item()))
 
-            partial_eval_time = Average()
+                partial_eval_time = Average()
 
     return epoch_loss.get_average()
-
-def save(model_name, path, epoch, model, optimizer, loss, is_best):
-
-    filename = path + "/" + model_name
-
-    if os.path.isdir(filename) == False:
-        os.mkdir(filename)
-        print("caiu")
-
-    state = {'epoch': epoch,
-             'loss': loss,
-             'model': model,
-             'optimizer': optimizer}
-
-    filename += '/' + model_name + '_' + str(epoch) + '.pth.tar'
-    torch.save(state, filename)
-
-    if is_best:
-        pass
 
 if __name__ == '__main__':
     main()

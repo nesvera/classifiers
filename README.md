@@ -1,1 +1,2 @@
-Pytorch works with RGB colorspace, then take care using opencv alongside.
+Tips:
+- Pytorch works with RGB colorspace, then take care using opencv alongside.
