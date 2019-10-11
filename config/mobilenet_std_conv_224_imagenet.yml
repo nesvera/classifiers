@@ -14,16 +14,16 @@ TRAIN:
     OPTIMIZER: 'SGD'
     LEARNING_RATE: 0.008        # Initial learning rate, dont forget SGDR
     MOMENTUM: 0.9
-    WEIGHT_DECAY: 0.0001
+    WEIGHT_DECAY: 1e−5
   REPRODUCIBILITY:
     REPRODUCIBILITY: False
     SEED: 0
   SGDR:
     MIN_LR: 0.0001
     MAX_LR: 0.008
-    LR_DECAY: 0.1               # e.g. 0.2 = decrease 20% the max_lr by cycle
+    LR_DECAY: 0.03              # e.g. 0.2 = decrease 20% the max_lr by cycle
     CYCLE: 10                   # number of epochs for each cycle
-    CYCLE_MULT: 0.1             # e.g. 0.2 = increase 20% the cycle length 
+    CYCLE_MULT: 0.01            # e.g. 0.2 = increase 20% the cycle length 
 
 TEST:
   BATCH_SIZE: 32
@@ -35,3 +35,6 @@ DATASET:
 EXP_DIR: './experiments/'
 LOG_DIR: './experiments/'
 RESUME_CHECKPOINT: 'BEST_mobilenet_dw_224.pth.tar'
+
+# lr_new = lr * ( 1 - lr_decay )^(cycle)
+# cycle_new = cycle * (1 + cycle_mult)^(cycle)

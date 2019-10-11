@@ -41,14 +41,14 @@ class SGDR:
         cycle_fraction = self.epoch_since_restart/self.epochs_per_cycle
         lr = self.min_lr + 0.5*(self.max_lr-self.min_lr)*(1+np.cos(cycle_fraction*np.pi))
 
-        if self.epoch_since_restart == self.epochs_per_cycle:
+        if self.epoch_since_restart > int(self.epochs_per_cycle):
             self.epoch_since_restart = 0
 
             self.max_lr = self.max_lr - self.max_lr*self.lr_decay 
             if self.max_lr < self.min_lr:
                 self.max_lr = self.min_lr
 
-            self.epochs_per_cycle = int(self.epochs_per_cycle + self.epochs_per_cycle*self.mult_factor)
+            self.epochs_per_cycle = self.epochs_per_cycle + self.epochs_per_cycle*self.mult_factor
 
         else:
             self.epoch_since_restart += 1
