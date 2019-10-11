@@ -91,6 +91,7 @@ def main():
         val_loss_log = {}
         top_5_log = {}
         top_1_log = {}
+        lr_log = {}
 
         # MobileNet V1 (224x224x3) with standard convolutional layers
         if config_model_name == 'mobilenet_standard_conv_224':
@@ -151,8 +152,9 @@ def main():
         # Keep track of losses
         train_loss_log =checkpoint['train_loss_log']
         val_loss_log =  checkpoint['val_loss_log']
-        top_5_log = {}
-        top_1_log = {}
+        top_5_log =     checkpoint['top_5_log']
+        top_1_log =     checkpoint['top_1_log']
+        lr_log =        checkpoint['lr_log']
 
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
@@ -259,6 +261,7 @@ def main():
 
         top_5_log[epoch] = top_5_acc
         top_1_log[epoch] = top_1_acc
+        lr_log[epoch] = config_lr
 
         print("Accuracy - Top-5: {0:.2f} - Top-1: {1:.2f}\n"
               .format(top_5_acc*100, top_1_acc*100))
@@ -272,12 +275,14 @@ def main():
         if os.path.isdir(exp_folder) == False:
             os.mkdir(exp_folder)
 
-        state = {'epoch': epoch,
+        state = {'model_name': config_model_name,
+                 'epoch': epoch,
                  'loss': val_loss,
                  'train_loss_log': train_loss_log,
                  'val_loss_log': val_loss_log,
                  'top_5_log': top_5_log,
                  'top_1_log': top_1_log,
+                 'lr_log': lr_log,
                  'model': model,
                  'optimizer': optimizer}
 
@@ -295,12 +300,14 @@ def main():
         # ------------------------
         #  Learning rate schedule 
         # ------------------------
-        lr = lr_schedule.update()
+        config_lr = lr_schedule.update()
 
         for opt in optimizer.param_groups:
-            opt['lr'] = lr
+            opt['lr'] = config_lr
 
-        print('LR: {0:.5f}\n'.format(lr))
+        print('LR Scheduler - Cycle: [{0}/{1}]'
+              .format(lr_schedule.epoch_since_restart, lr_schedule.epochs_per_cycle))
+        print('LR: {0:.5f}\n'.format(config_lr))
 
 def train(model, loader, criterion, optimizer, epoch, print_freq):
     
@@ -402,6 +409,7 @@ def validation(model, loader, criterion, optimizer, epoch, print_freq):
                 print('Partial eval time: {0:.4f} - Epoch eval time: {1:.4f} (seconds/batch)'
                      .format(partial_eval_time.get_average(), epoch_eval_time.get_average()))  
                 print('Loss: {0:.5f} - Current loss: {1:.5f}'.format(epoch_loss.get_average(), eval_loss.item()))
+                print()
 
                 partial_eval_time = Average()
 
