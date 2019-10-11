@@ -52,7 +52,8 @@ def main():
 
     config_workers =        config['TRAIN']['WORKERS']
     config_max_epochs =     config['TRAIN']['MAX_EPOCHS']
-    config_batch_size =     config['TRAIN']['BATCH_SIZE']
+    config_train_batch =    config['TRAIN']['BATCH_SIZE']
+    config_val_batch =      config['TEST']['BATCH_SIZE']
     config_print_freq =     config['TRAIN']['PRINT_FREQ']
 
     config_train_dataset =  config['DATASET']['TRAIN']
@@ -88,6 +89,8 @@ def main():
         # Keep track of losses
         train_loss_log = {}
         val_loss_log = {}
+        top_5_log = {}
+        top_1_log = {}
 
         # MobileNet V1 (224x224x3) with standard convolutional layers
         if config_model_name == 'mobilenet_standard_conv_224':
@@ -148,6 +151,8 @@ def main():
         # Keep track of losses
         train_loss_log =checkpoint['train_loss_log']
         val_loss_log =  checkpoint['val_loss_log']
+        top_5_log = {}
+        top_1_log = {}
 
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
@@ -180,14 +185,14 @@ def main():
     
     # "list" of batches
     train_loader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_size=config_batch_size,
+                                               batch_size=config_train_batch,
                                                shuffle=True,
                                                num_workers=config_workers,
                                                pin_memory=True)
 
     validation_loader = torch.utils.data.DataLoader(test_dataset,
-                                                    batch_size=config_batch_size,
-                                                    shuffle=False,
+                                                    batch_size=config_val_batch,
+                                                    shuffle=True,
                                                     num_workers=config_workers,
                                                     pin_memory=True)
 
@@ -211,7 +216,7 @@ def main():
 
         # ------------------------
         #          Train
-        # ------------------------
+        # ------------------------        
         train_loss = train(model=model,
                            loader=train_loader,
                            criterion=criterion,
@@ -220,7 +225,7 @@ def main():
                            print_freq=config_print_freq)
 
         train_loss_log[epoch] = train_loss
-
+        
         # ------------------------
         #        Validation 
         # ------------------------
@@ -247,6 +252,18 @@ def main():
               .format(val_loss, best_loss, epochs_since_last_improvement))
 
         # ------------------------
+        #      Test accuracy 
+        # ------------------------
+        top_1_acc, top_5_acc = calc_accuracy(model=model,
+                                             loader=validation_loader)
+
+        top_5_log[epoch] = top_5_acc
+        top_1_log[epoch] = top_1_acc
+
+        print("Accuracy - Top-5: {0:.2f} - Top-1: {1:.2f}\n"
+              .format(top_5_acc*100, top_1_acc*100))
+
+        # ------------------------
         #        Save model 
         # ------------------------
         exp_folder = config_experiment_path + "/" + config_model_name
@@ -259,6 +276,8 @@ def main():
                  'loss': val_loss,
                  'train_loss_log': train_loss_log,
                  'val_loss_log': val_loss_log,
+                 'top_5_log': top_5_log,
+                 'top_1_log': top_1_log,
                  'model': model,
                  'optimizer': optimizer}
 
@@ -281,7 +300,7 @@ def main():
         for opt in optimizer.param_groups:
             opt['lr'] = lr
 
-        print('LR: {0:.3f}\n'.format(lr))
+        print('LR: {0:.5f}\n'.format(lr))
 
 def train(model, loader, criterion, optimizer, epoch, print_freq):
     
@@ -364,12 +383,12 @@ def validation(model, loader, criterion, optimizer, epoch, print_freq):
     with torch.no_grad():
         for i, (images, labels) in enumerate(loader):    
             
-            images = images.to(device)          # (batch_size, 3, width, height)
+            images = images.to(device)                      # (batch_size, 3, width, height)
             labels = labels.to(device)
 
-            prediction_prob = model(images)     # (batch_size, n_classes)
+            prediction_prob = model(images)                 # (batch_size, n_classes)
 
-            eval_loss = criterion(prediction_prob, labels)
+            eval_loss = criterion(prediction_prob, labels) 
             
             epoch_loss.add_value(eval_loss.item())
 
@@ -387,6 +406,45 @@ def validation(model, loader, criterion, optimizer, epoch, print_freq):
                 partial_eval_time = Average()
 
     return epoch_loss.get_average()
+
+def calc_accuracy(model, loader):
+    model.eval()
+
+    top_1_acc = 0
+    top_5_acc = 0 
+    
+    with torch.no_grad():
+        for i, (images, labels) in enumerate(loader):
+       
+            images = images.to(device)              # (batch_size, 3, width, height)
+            labels = labels.to(device)              # (batch_size, 1)
+
+            prediction_prob = model(images)         # (batch_size, n_classes)
+
+            # top-5 
+            '''            
+            - Create a new tensor, copy the label tensor through axis 0
+            - Compare the new tensor, with the top-5 will result in a tensor with true/false
+            - Sum this tensor to know the number of predictions with the true label in the best 5
+            '''
+            top_5_label = labels.repeat(5,1).permute(1,0)           # (batch_size, 5)
+            top_5_value, top_5_ind = torch.topk(prediction_prob, 5) # (batch_size, 5)
+            
+            top_5_match = torch.eq(top_5_ind, top_5_label)          # (batch_size, 5) (True/false)
+            top_5_sum = top_5_match.sum()                           # (1)
+            top_5_acc += top_5_sum.item()
+
+            # top-1
+            top_1_value = top_5_value[:,0]                          # (batch_size)
+            top_1_ind = top_5_ind[:,0]                              # (batch_size)
+
+            top_1_sum = torch.eq(top_1_ind, labels).sum()           # (1)
+            top_1_acc += top_1_sum.item()
+
+    top_5_acc = float(top_5_acc)/len(loader.dataset)
+    top_1_acc = float(top_1_acc)/len(loader.dataset)
+
+    return top_1_acc, top_5_acc
 
 if __name__ == '__main__':
     main()

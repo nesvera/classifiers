@@ -9,7 +9,7 @@ TRAIN:
   MAX_EPOCHS: 800
   BATCH_SIZE: 64
   WORKERS: 2
-  PRINT_FREQ: 10
+  PRINT_FREQ: 20
   OPTIMIZER:
     OPTIMIZER: 'SGD'
     LEARNING_RATE: 0.008        # Initial learning rate, dont forget SGDR
