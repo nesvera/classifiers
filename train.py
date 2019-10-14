@@ -24,7 +24,10 @@ def main():
                         help='Configuration file with train hyperparamenters')
 
     args = parser.parse_args()
-
+    
+    # ------------------------
+    #    Load configuration 
+    # ------------------------
     config_path = args.config_path
     if os.path.exists(config_path) == False:
         print('Error: config file does not exist')
@@ -84,6 +87,9 @@ def main():
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
+    # ------------------------
+    #    Build/Load model
+    # ------------------------
     # Initialize a new model or load checkpoint
     if config_checkpoint == '':
     
