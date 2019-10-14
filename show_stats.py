@@ -63,18 +63,24 @@ def main():
     top_5_x, top_5_y = zip(*top_5)
     top_1_x, top_1_y = zip(*top_1)
 
-    t5, = sub_plot[1].plot(top_5_x, top_5_y, 'k--')
-    t1, = sub_plot[1].plot(top_1_x, top_1_y, 'y--')
+    t5, = sub_plot[1].plot(top_5_x, top_5_y, 'k')
+    t1, = sub_plot[1].plot(top_1_x, top_1_y, 'y')
     sub_plot[1].set_xlabel('Epoch')
     sub_plot[1].set_ylabel('Accuracy')
-    #sub_plot[1].set_xlim(0, max(top_5_x[-1], top_1_x[-1])
+    sub_plot[1].set_xlim(0, max(top_5_x[-1], top_1_x[-1]))
 
     fig.legend((tl_graph, vl_graph, lr_graph, t5, t1), 
                ('Train loss', 'Val loss', 'Learning rate', 'Top-5', 'Top-1'), 
                'upper right')
+
+    print("Best")
+    print("Train loss: {0:.3f} - Val loss: {1:.3f}"
+          .format(train_loss_y[-1], val_loss_y[-1]))
+    print("Accuracy Top-5 {0:.3f} - Top-1 {1:.3f}"
+          .format(top_5_y[-1], top_1_y[-1]))
+
     fig.tight_layout()
     plt.show()
-    
 
 if __name__ == "__main__":
     main()

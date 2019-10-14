@@ -12,13 +12,14 @@ TRAIN:
   PRINT_FREQ: 20
   OPTIMIZER:
     OPTIMIZER: 'SGD'
-    LEARNING_RATE: 0.008        # Initial learning rate, dont forget SGDR
+    LEARNING_RATE: 0.01        # Initial learning rate, dont forget SGDR
     MOMENTUM: 0.9
     WEIGHT_DECAY: 1e−5
   REPRODUCIBILITY:
     REPRODUCIBILITY: False
     SEED: 0
-  SGDR:
+  LR_SCHEDULER:
+    LR_SCHEDULER: False
     MIN_LR: 0.0001
     MAX_LR: 0.008
     LR_DECAY: 0.03              # e.g. 0.2 = decrease 20% the max_lr by cycle

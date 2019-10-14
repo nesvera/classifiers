@@ -44,11 +44,12 @@ def main():
     config_momentum =       config['TRAIN']['OPTIMIZER']['MOMENTUM']
     config_weight_decay =   config['TRAIN']['OPTIMIZER']['WEIGHT_DECAY']
 
-    config_sgdr_min_lr =    config['TRAIN']['SGDR']['MIN_LR']
-    config_sgdr_max_lr =    config['TRAIN']['SGDR']['MAX_LR']
-    config_sgdr_lr_decay =  config['TRAIN']['SGDR']['LR_DECAY']
-    config_sgdr_cycle =     config['TRAIN']['SGDR']['CYCLE']
-    config_sgdr_cycle_mult= config['TRAIN']['SGDR']['CYCLE_MULT']
+    config_lr_scheduler =   config['TRAIN']['LR_SCHEDULER']['LR_SCHEDULER']
+    config_sgdr_min_lr =    config['TRAIN']['LR_SCHEDULER']['MIN_LR']
+    config_sgdr_max_lr =    config['TRAIN']['LR_SCHEDULER']['MAX_LR']
+    config_sgdr_lr_decay =  config['TRAIN']['LR_SCHEDULER']['LR_DECAY']
+    config_sgdr_cycle =     config['TRAIN']['LR_SCHEDULER']['CYCLE']
+    config_sgdr_cycle_mult= config['TRAIN']['LR_SCHEDULER']['CYCLE_MULT']
 
     config_workers =        config['TRAIN']['WORKERS']
     config_max_epochs =     config['TRAIN']['MAX_EPOCHS']
@@ -300,14 +301,18 @@ def main():
         # ------------------------
         #  Learning rate schedule 
         # ------------------------
-        config_lr = lr_schedule.update()
+        if config_lr_scheduler == True:
+            config_lr = lr_schedule.update()
 
-        for opt in optimizer.param_groups:
-            opt['lr'] = config_lr
+            for opt in optimizer.param_groups:
+                opt['lr'] = config_lr
 
-        print('LR Scheduler - Cycle: [{0}/{1}]'
-              .format(lr_schedule.epoch_since_restart, lr_schedule.epochs_per_cycle))
-        print('LR: {0:.5f}\n'.format(config_lr))
+            print('LR Scheduler - Cycle: [{0}/{1}]'
+                  .format(lr_schedule.epoch_since_restart, lr_schedule.epochs_per_cycle))
+            print('LR: {0:.5f}\n'.format(config_lr))
+
+        else:
+            print("Sem lr scheduler\n")
 
 def train(model, loader, criterion, optimizer, epoch, print_freq):
     
