@@ -21,7 +21,7 @@ def main():
     parser.add_argument('--config',
                         dest='config_path',
                         required=True,
-                        help='Configuration file with train hyperparamenters')
+                        help='Configuration file with train hyperparameters')
 
     args = parser.parse_args()
     
@@ -41,30 +41,24 @@ def main():
     config_input_size =     config['MODEL']['IMAGE_SIZE']
     config_num_classes =    config['MODEL']['NUM_CLASSES']
     config_alpha =          config['MODEL']['ALPHA']
-
     config_optimizer =      config['TRAIN']['OPTIMIZER']['OPTIMIZER']
     config_lr =             config['TRAIN']['OPTIMIZER']['LEARNING_RATE']
     config_momentum =       config['TRAIN']['OPTIMIZER']['MOMENTUM']
     config_weight_decay =   config['TRAIN']['OPTIMIZER']['WEIGHT_DECAY']
-
     config_lr_scheduler =   config['TRAIN']['LR_SCHEDULER']['LR_SCHEDULER']
     config_sgdr_min_lr =    config['TRAIN']['LR_SCHEDULER']['MIN_LR']
     config_sgdr_max_lr =    config['TRAIN']['LR_SCHEDULER']['MAX_LR']
     config_sgdr_lr_decay =  config['TRAIN']['LR_SCHEDULER']['LR_DECAY']
     config_sgdr_cycle =     config['TRAIN']['LR_SCHEDULER']['CYCLE']
     config_sgdr_cycle_mult= config['TRAIN']['LR_SCHEDULER']['CYCLE_MULT']
-
     config_workers =        config['TRAIN']['WORKERS']
     config_max_epochs =     config['TRAIN']['MAX_EPOCHS']
     config_train_batch =    config['TRAIN']['BATCH_SIZE']
     config_val_batch =      config['TEST']['BATCH_SIZE']
     config_print_freq =     config['TRAIN']['PRINT_FREQ']
-
     config_train_dataset =  config['DATASET']['TRAIN']
     config_val_dataset =    config['DATASET']['VALID']
-
     config_experiment_path =config['EXP_DIR']
-
     config_checkpoint =     config['RESUME_CHECKPOINT']
 
     checkpoint_path = config_experiment_path + "/" + config_model_name
@@ -72,9 +66,9 @@ def main():
 
     if os.path.exists(checkpoint_path) == False:
         config_checkpoint = ''
-        print("Warning: Best checkpoint was not found!")
+        print("Warning: Checkpoint was not found!")
     else:
-        print("Warning: Loading best checkpoint!")
+        print("Warning: Loading checkpoint!")
 
     # Set the seed for reproducibility
     if config['TRAIN']['REPRODUCIBILITY']['REPRODUCIBILITY'] == True:
@@ -90,7 +84,7 @@ def main():
     # ------------------------
     #    Build/Load model
     # ------------------------
-    # Initialize a new model or load checkpoint
+    # Initialize a new model
     if config_checkpoint == '':
     
         # Keep track of losses
@@ -145,11 +139,8 @@ def main():
 
         start_epoch = 1
 
+    # or load checkpoint
     else:
-        
-        checkpoint_path = config_experiment_path + "/" + config_model_name
-        checkpoint_path += "/" + config_checkpoint
-
         checkpoint = torch.load(checkpoint_path)
         
         start_epoch =   checkpoint['epoch'] + 1

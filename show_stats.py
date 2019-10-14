@@ -4,6 +4,8 @@ import os
 import argparse
 import matplotlib.pyplot as plt
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model",
@@ -19,7 +21,7 @@ def main():
         exit(1)
        
     # load model
-    checkpoint = torch.load(model_path)
+    checkpoint = torch.load(model_path).to(device)
 
     #model_name =    checkpoint['model_name']
     cur_epoch =     checkpoint['epoch']
