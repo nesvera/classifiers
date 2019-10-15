@@ -141,7 +141,7 @@ def main():
 
     # or load checkpoint
     else:
-        checkpoint = torch.load(checkpoint_path)
+        checkpoint = torch.load(checkpoint_path, map_location=device)
         
         start_epoch =   checkpoint['epoch'] + 1
         model =         checkpoint['model']

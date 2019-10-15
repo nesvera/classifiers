@@ -4,6 +4,8 @@ import os
 import argparse
 import matplotlib.pyplot as plt
 
+from torchsummary import summary
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def main():
@@ -21,7 +23,7 @@ def main():
         exit(1)
        
     # load model
-    checkpoint = torch.load(model_path).to(device)
+    checkpoint = torch.load(model_path, map_location=device)
 
     #model_name =    checkpoint['model_name']
     cur_epoch =     checkpoint['epoch']
@@ -33,6 +35,13 @@ def main():
     top_1_log =     checkpoint['top_1_log']
     lr_log =        checkpoint['lr_log']
 
+    # summarize the model
+    print()
+    print("----------------------------------------------------------------")
+    print("--------------------- Model summary ----------------------------")
+    print("----------------------------------------------------------------")
+    summary(model, (3, 224, 224))
+    
     # plot stats
     fig, sub_plot = plt.subplots(2, 1)
 
