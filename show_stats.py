@@ -86,9 +86,9 @@ def main():
 
     print("Best")
     print("Train loss: {0:.3f} - Val loss: {1:.3f}"
-          .format(train_loss_y[-1], val_loss_y[-1]))
+          .format(min(train_loss_y), min(val_loss_y)))
     print("Accuracy Top-5 {0:.3f} - Top-1 {1:.3f}"
-          .format(top_5_y[-1], top_1_y[-1]))
+          .format(max(top_5_y), max(top_1_y)))
 
     fig.tight_layout()
     plt.show()

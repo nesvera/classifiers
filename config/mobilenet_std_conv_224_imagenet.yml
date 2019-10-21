@@ -11,10 +11,10 @@ TRAIN:
   WORKERS: 2
   PRINT_FREQ: 20
   OPTIMIZER:
-    OPTIMIZER: 'SGD'
-    LEARNING_RATE: 0.01        # Initial learning rate, dont forget SGDR
+    OPTIMIZER: 'ADAM'
+    LEARNING_RATE: 0.001        # Initial learning rate, dont forget SGDR
     MOMENTUM: 0.9
-    WEIGHT_DECAY: 1e−5
+    WEIGHT_DECAY: 0.00001
   REPRODUCIBILITY:
     REPRODUCIBILITY: False
     SEED: 0

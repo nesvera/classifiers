@@ -133,6 +133,8 @@ def main():
                                         momentum=config_momentum)
 
         elif config_optimizer == 'ADAM':
+            print("AAAAADAM")
+            input()
             optimizer = torch.optim.Adam(model.parameters(),
                                          lr=config_lr,
                                          weight_decay=config_weight_decay)            
@@ -168,6 +170,9 @@ def main():
     # TODO: converter para grayscale as images do dataset da pista, pra ver se 
     # aquele efeito louco desaparece
 
+    # ------------------------
+    #       Dataloaders
+    # ------------------------  
     transform = T.Compose([
         T.Resize(config_input_size[0]),          # resize the smaller edge of the image, keeping ratio
         T.CenterCrop(config_input_size[0]),      # crop the image to the correct size        
@@ -175,8 +180,6 @@ def main():
         T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    # Dataloaders
-    # "list" of train data
     train_dataset = torchvision.datasets.ImageFolder(root=config_train_dataset,
                                                      transform=transform)
 
