@@ -133,8 +133,6 @@ def main():
                                         momentum=config_momentum)
 
         elif config_optimizer == 'ADAM':
-            print("AAAAADAM")
-            input()
             optimizer = torch.optim.Adam(model.parameters(),
                                          lr=config_lr,
                                          weight_decay=config_weight_decay)            
@@ -301,6 +299,9 @@ def main():
         # ------------------------
         #  Learning rate schedule 
         # ------------------------
+        if epoch > 200:
+            config_lr_scheduler = True
+
         if config_lr_scheduler == True:
             config_lr = lr_schedule.update()
 

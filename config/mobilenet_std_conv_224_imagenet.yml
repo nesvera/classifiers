@@ -21,10 +21,10 @@ TRAIN:
   LR_SCHEDULER:
     LR_SCHEDULER: False
     MIN_LR: 0.0001
-    MAX_LR: 0.008
-    LR_DECAY: 0.03              # e.g. 0.2 = decrease 20% the max_lr by cycle
-    CYCLE: 10                   # number of epochs for each cycle
-    CYCLE_MULT: 0.01            # e.g. 0.2 = increase 20% the cycle length 
+    MAX_LR: 0.005
+    LR_DECAY: 0              # e.g. 0.2 = decrease 20% the max_lr by cycle
+    CYCLE: 100                   # number of epochs for each cycle
+    CYCLE_MULT: 0            # e.g. 0.2 = increase 20% the cycle length 
 
 TEST:
   BATCH_SIZE: 32
