@@ -392,7 +392,7 @@ def validation(model, loader, criterion, optimizer, epoch, print_freq):
 
     batch_start = time.time()
 
-    # Prohibit gradient computation explicity because I had some problems with memory
+    # Prohibit gradient computation explicity because problems with memory
     with torch.no_grad():
         for i, (images, labels) in enumerate(loader):    
             
